@@ -143,4 +143,315 @@ export default function App() {
             <button className="mobile-conversation-button" onClick={() => setMobileChat(true)}><MessageSquare size={16} />Conversation<span>{messages.length > 1 ? messages.length - 1 : 'Say hello'}</span><ArrowRight size={15} /></button>
           </section>
                     <aside
-            className={`right-column ${mobileChat ? 'mob
+            className={`right-column ${mobileChat ? 'mobile-chat-open' : ''} ${expanded ? 'chat-expanded' : ''}`}
+            aria-label="Conversation"
+          >
+            {conversation}
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    {panel === 'settings' && (
+      <Modal
+        title="Settings"
+        subtitle="Make Aanya yours."
+        onClose={() => setPanel(null)}
+      >
+        <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => setSettingsTab('general')}
+            aria-pressed={settingsTab === 'general'}
+          >
+            General
+          </button>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => {
+              setApiBase(preferences.apiBase);
+              setSettingsTab('connection');
+            }}
+            aria-pressed={settingsTab === 'connection'}
+          >
+            AI connection
+          </button>
+        </div>
+
+        {settingsTab === 'connection' ? (
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              saveConnection();
+            }}
+            style={{ display: 'grid', gap: 16 }}
+          >
+            <label htmlFor="backend-url">Backend URL</label>
+            <input
+              id="backend-url"
+              type="url"
+              value={apiBase}
+              onChange={e => setApiBase(e.target.value)}
+              placeholder="https://your-backend.vercel.app"
+              autoComplete="off"
+              spellCheck={false}
+              required
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: 12,
+                borderRadius: 8,
+                border: '1px solid #666',
+                background: 'transparent',
+                color: 'inherit',
+              }}
+            />
+            <p>
+              Enter your deployed backend address, not an API key.
+              Use the base URL without /api/chat or /api/tts.
+            </p>
+            <button type="submit" className="text-button">
+              Save connection
+            </button>
+          </form>
+        ) : (
+          <div style={{ display: 'grid', gap: 20 }}>
+            <div>
+              <span>Assistant voice </span>
+              <Toggle
+                checked={preferences.voice}
+                onChange={() => assistant.toggleVoice()}
+                label="Assistant voice"
+              />
+            </div>
+
+            <div>
+              <span>Animations </span>
+              <Toggle
+                checked={preferences.motion}
+                onChange={() =>
+                  assistant.updatePreferences({
+                    motion: !preferences.motion,
+                  })
+                }
+                label="Animations"
+              />
+            </div>
+
+            <div>
+              <span>Hey Aanya wake word </span>
+              <Toggle
+                checked={preferences.wake}
+                onChange={() =>
+                  assistant.updatePreferences({
+                    wake: !preferences.wake,
+                  })
+                }
+                label="Hey Aanya wake word"
+              />
+            </div>
+
+            <div>
+              <span>Preview mode </span>
+              <Toggle
+                checked={preferences.preview}
+                onChange={() =>
+                  assistant.updatePreferences({
+                    preview: !preferences.preview,
+                  })
+                }
+                label="Preview mode"
+              />
+              <p>Turn preview off to use your configured AI backend.</p>
+            </div>
+          </div>
+        )}
+      </Modal>
+    )}
+
+    {panel === 'history' && (
+      <Modal
+        title="Conversation history"
+        subtitle="Messages stored on this device."
+        onClose={() => setPanel(null)}
+      >
+        <input
+          aria-label="Search conversation history"
+          placeholder="Search your messages"
+          value={historyQuery}
+          onChange={e => setHistoryQuery(e.target.value)}
+          style={{
+            width: '100%',
+            boxSizing: 'border-box',
+            padding: 12,
+            marginBottom: 16,
+          }}
+        />
+
+        {historyMessages.length === 0 ? (
+          <p>No matching messages.</p>
+        ) : (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {historyMessages.map(message => (
+              <button
+                type="button"
+                className="text-button"
+                key={message.id}
+                onClick={() => {
+                  setInput(message.content);
+                  setPanel(null);
+                  inputRef.current?.focus();
+                }}
+                style={{ textAlign: 'left', whiteSpace: 'pre-wrap' }}
+              >
+                {message.content}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <button
+          type="button"
+          className="text-button"
+          onClick={exportChat}
+          style={{ marginTop: 20 }}
+        >
+          Export conversation
+        </button>
+      </Modal>
+    )}
+
+    {panel === 'actions' && (
+      <Modal
+        title="Quick actions"
+        subtitle="Choose an action to get started."
+        onClose={() => setPanel(null)}
+      >
+        {action ? (
+          <div style={{ display: 'grid', gap: 16 }}>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => {
+                setAction(null);
+                setActionResult('');
+              }}
+            >
+              Back to actions
+            </button>
+
+            <h3 style={{ textTransform: 'capitalize' }}>{action}</h3>
+
+            <label htmlFor="action-input">
+              Input, if needed for this action
+            </label>
+            <input
+              id="action-input"
+              value={actionInput}
+              onChange={e => setActionInput(e.target.value)}
+              placeholder="Search, address, number, or text"
+              style={{ padding: 12 }}
+            />
+
+            <button
+              type="button"
+              className="text-button"
+              disabled={actionBusy}
+              onClick={() => void runAction()}
+            >
+              {actionBusy ? 'Working…' : 'Run action'}
+            </button>
+
+            {actionResult && (
+              <p role={actionError ? 'alert' : 'status'}>
+                {actionResult}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {browserActions.map(item => {
+              const Icon = actionIcons[item.id];
+
+              return (
+                <button
+                  type="button"
+                  className="text-button"
+                  key={item.id}
+                  onClick={() => chooseAction(item.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  <Icon size={18} />
+                  {item.id}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </Modal>
+    )}
+
+    {panel === 'help' && (
+      <Modal
+        title="Meet Aanya"
+        subtitle="Your personal voice assistant."
+        onClose={() => setPanel(null)}
+      >
+        <div style={{ display: 'grid', gap: 16 }}>
+          <p>Type a message or tap the microphone to speak.</p>
+          <p>
+            For live AI, open Settings → AI connection and save your
+            deployed backend URL.
+          </p>
+          <p>
+            Allow microphone access when your browser asks. Voice
+            recognition and wake-word support depend on your browser.
+          </p>
+          <p>
+            Provider API keys belong only in the backend environment,
+            never in this app.
+          </p>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => {
+              setApiBase(preferences.apiBase);
+              setSettingsTab('connection');
+              openPanel('settings');
+            }}
+          >
+            Set up AI connection
+          </button>
+        </div>
+      </Modal>
+    )}
+
+    {toast && (
+      <div
+        role="status"
+        style={{
+          position: 'fixed',
+          bottom: 24,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          maxWidth: '90vw',
+          padding: '12px 20px',
+          borderRadius: 12,
+          background: '#202029',
+          color: '#fff',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.25)',
+        }}
+      >
+        {toast}
+      </div>
+    )}
+  </div>;
+}
