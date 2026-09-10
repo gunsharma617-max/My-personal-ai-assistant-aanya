@@ -252,7 +252,7 @@ export default function App() {
                 label="Hey Aanya wake word"
               />
             </div>
-
+        <span className="wordmark-sub">FOUNDER • AAKASH KAINTHLA</span>
             <div>
               <span>Preview mode </span>
               <Toggle
